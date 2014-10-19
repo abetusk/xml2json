@@ -40,6 +40,7 @@ import sys
 import os
 
 import xml.etree.cElementTree as ET
+import defusedxml.cElementTree as safeET
 
 
 def strip_tag(tag):
@@ -169,11 +170,15 @@ def json2elem(json_data, factory=ET.Element):
     return internal_to_elem(json.loads(json_data), factory)
 
 
-def xml2json(xmlstring, options, strip_ns=1, strip=1):
+def xml2json(xmlstring, options, strip_ns=1, strip=1, safe_parse=False):
 
     """Convert an XML string into a JSON string."""
 
-    elem = ET.fromstring(xmlstring)
+    if safe_parse:
+      elem = safeET.fromstring(xmlstring)
+    else:
+      elem = ET.fromstring(xmlstring)
+
     return elem2json(elem, options, strip_ns=strip_ns, strip=strip)
 
 
@@ -212,6 +217,9 @@ def main():
     p.add_option(
         '--strip_newlines', action="store_true",
         dest="strip_nl", help="Strip newlines for xml2json")
+    p.add_option(
+        '--safe', action="store_true",
+        dest="safe", help="Do not parse potentially malicious XML")
     options, arguments = p.parse_args()
 
     inputstream = sys.stdin
@@ -227,14 +235,17 @@ def main():
 
     strip = 0
     strip_ns = 0
+    safe_parse = False
     if options.strip_text:
         strip = 1
     if options.strip_ns:
         strip_ns = 1
     if options.strip_nl:
         input = input.replace('\n', '').replace('\r','')
+    if options.safe:
+        safe_parse = True
     if (options.type == "xml2json"):
-        out = xml2json(input, options, strip_ns, strip)
+        out = xml2json(input, options, strip_ns, strip, safe_parse)
     else:
         out = json2xml(input)
 
